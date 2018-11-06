@@ -43,6 +43,7 @@ function [xBest, fBest, info, dataLog] = PSO(objFun, x0, xLow, xUpp, options)
 %           --> 'final' = print out some info on exit
 %           --> 'off' = disable printing
 %       .printMod = 1   (only used if display == 'iter')
+%       .saveOnExit = false = save before exiting due to errors (
 %
 % OUTPUTS:
 %   xBest = [n, 1] = best point ever found
@@ -111,6 +112,8 @@ function [xBest, fBest, info, dataLog] = PSO(objFun, x0, xLow, xUpp, options)
 %   --> Made x0 argument optional  (pass x0 as [] to ignore)
 %
 
+%%%% 
+
 
 %%%% Basic input validation:
 [n, m] = size(xLow);
@@ -144,12 +147,17 @@ default.guessWeight = 0.2;  % on range [0, 0.9);  0 = ignore guess,  1 = start a
 default.plotFun = [];   % Handle to a function for plotting the progress
 default.display = 'iter';  % Print out progress to user
 default.printMod = 1;  % Print out every [printMod] iterations
+default.saveOnExit = false;
 if nargin == 5  % user provided options struct!
     options = mergeOptions(default,options);
 else  % no user-defined options. Use defaults.
     options = default;
 end
 
+%%%%
+if options.saveOnExit
+    cleanObj = onCleanup(@() saveOnExit);
+end
 
 %%% Options validation:
 if options.guessWeight < 0
@@ -376,6 +384,13 @@ if strcmp('iter',options.display) || strcmp('final',options.display)
     end
 end
 
+function saveOnExit()
+    timestr = datestr(clock,0); 
+    filename = [datestr(now,'yyyy-mm-dd_HHMMSS') '.mat'];
+    save(filename);
+    display(['Workspace saved as ' filename]);
+end
+
 end
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -395,7 +410,5 @@ for i=1:length(names)
 end
 
 end
-
-
 
 

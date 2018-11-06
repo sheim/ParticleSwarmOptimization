@@ -25,6 +25,7 @@ function [xBest, fBest, info, dataLog] = PSO(objFun, x0, xLow, xUpp, options)
 %       .tolFun = 1e-6 = exit when variance in objective is < tolFun
 %       .tolX = 1e-10 = exit when norm of variance in state < tolX
 %       .flagVectorize = false = is the objective function vectorized?
+%       .flagParallelize = false = should particles be evaluated in parallel?
 %       .flagMinimize = true = minimize objective
 %           --> Set to false to maximize objective
 %       .flagWarmStart = false = directly use initial guess?
@@ -83,10 +84,11 @@ function [xBest, fBest, info, dataLog] = PSO(objFun, x0, xLow, xUpp, options)
 %
 % NOTES:
 %   This function uses a slightly different algorithm based on whether or
-%   not the objective function is vectorized. If the objective is
-%   vectorized, then the new global best point is only computed once per
+%   not the objective function is vectorized/parallelized. If the objective is
+%   vectorized or parallelized, then the new global best point is only computed once per
 %   iteration (generation). If the objective is not vectorized, then the
-%   global best is updated after each particle is updated.
+%   global best is updated after each particle is updated. For
+%   parallelization, the Parallel Computing Toolbox is required.
 %
 %
 % DEPENDENCIES
@@ -134,6 +136,7 @@ default.maxIter = 100; % maximum number of generations
 default.tolFun = 1e-6; % exit when variance in objective is < tolFun
 default.tolX = 1e-10;  % exit when norm of variance in state < tolX
 default.flagVectorize = false; % is the objective function vectorized?
+default.flagParallelize = false;
 default.flagMinimize = true;  %true for minimization, false for maximization
 default.xDelMax = xUpp - xLow;  %Maximnum position update;
 default.flagWarmStart = false;  %Directly use the initial point?
@@ -202,8 +205,14 @@ if options.flagVectorize   % Batch process objective
     F = objFun(X);  % Function value at each particle in the population
 else  % Objective not vectorized
     F = zeros(1,m);
-    for idx = 1:m   % Loop over particles
-        F(1,idx) = objFun(X(:,idx));
+    if options.flagParallelize
+        parfor idx = 1:m   % Loop over particles
+            F(1,idx) = objFun(X(:,idx));
+        end
+    else
+       for idx = 1:m   % Loop over particles
+           F(1,idx) = objFun(X(:,idx));
+       end
     end
 end
 
@@ -261,6 +270,25 @@ for iter = 1:maxIter
             [F_Global, I_Global] = optFun(F_Best); % Value of best point ever, over all points
             X_Global = X(:, I_Global); % Best point ever, over all  points
             
+        elseif options.flagVectorize   % Batch process objective
+            
+            V =  ...   %Update equations
+                options.alpha*V + ...    % Current search direction
+                options.beta*r1.*((X_Global*ones(1,m))-X) + ...  % Global direction
+                options.gamma*r2.*(X_Best-X);    % Local best direction
+            X_New = X + V;  % Update position
+            X = max(min(X_New, X_Upp), X_Low);   % Clamp position to bounds
+            
+            parfor idx = 1:m   % Loop over particles in parallel
+                F(1,idx) = objFun(X(:,idx));
+            end
+            
+            F_Best_New = optFun(F_Best, F);   %Compute the best point
+            idxUpdate = F_Best_New ~= F_Best;  % Which indicies updated?
+            X_Best(:,idxUpdate) = X(:,idxUpdate);  %Copy over new best points
+            F_Best = F_Best_New;
+            [F_Global, I_Global] = optFun(F_Best); % Value of best point ever, over all points
+            X_Global = X(:, I_Global); % Best point ever, over all  points
             
         else   %Objective is not vectorized.
             

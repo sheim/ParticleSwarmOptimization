@@ -384,9 +384,9 @@ if strcmp('iter',options.display) || strcmp('final',options.display)
     end
 end
 
-function saveOnExit()
+function saveOnExit() %% TODO: redo this to process info and only save this
     timestr = datestr(clock,0); 
-    filename = [datestr(now,'yyyy-mm-dd_HHMMSS') '.mat'];
+    filename = ['PSO_results_' datestr(now,'yyyy-mm-dd_HHMMSS') '.mat'];
     save(filename);
     display(['Workspace saved as ' filename]);
 end

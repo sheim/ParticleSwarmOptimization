@@ -278,7 +278,7 @@ for iter = 1:maxIter
             [F_Global, I_Global] = optFun(F_Best); % Value of best point ever, over all points
             X_Global = X(:, I_Global); % Best point ever, over all  points
             
-        elseif options.flagVectorize   % Batch process objective
+        elseif options.flagParallelize   % Batch process objective
             
             V =  ...   %Update equations
                 options.alpha*V + ...    % Current search direction
